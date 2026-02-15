@@ -8,6 +8,7 @@ from rich.table import Table
 from app.core.config import settings
 from app.core.logger import setup_logger
 from app.core.models import EndpointConfig, HealthCheckResult
+from app.core.stats import StatsTracker
 from app.monitor.health_checker import HealthChecker
 from app.notifier.discord import DiscordNotifier
 from app.notifier.email import EmailNotifier
@@ -88,6 +89,8 @@ async def send_alerts(results: list[HealthCheckResult]) -> None:
 
 
 async def monitor_loop(endpoints: list[EndpointConfig]) -> None:
+    stats_tracker = StatsTracker()
+    
     async with HealthChecker(max_retries=settings.max_retries) as checker:
         while True:
             try:
@@ -95,6 +98,10 @@ async def monitor_loop(endpoints: list[EndpointConfig]) -> None:
                 
                 results = await checker.check_multiple(endpoints)
                 display_results(results)
+                
+                stats_tracker.update(results)
+                uptime = stats_tracker.get_uptime_percentage()
+                console.print(f"\n[dim]Uptime: {uptime:.1f}% | Verificações: {stats_tracker.stats.total_checks}[/dim]")
                 
                 await send_alerts(results)
                 
