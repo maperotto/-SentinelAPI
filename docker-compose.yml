@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  sentinel:
+    build: .
+    container_name: sentinel-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+      - ./endpoints.json:/app/endpoints.json
+    environment:
+      - MONITOR_INTERVAL=${MONITOR_INTERVAL:-60}
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-10}
+      - MAX_RETRIES=${MAX_RETRIES:-3}
