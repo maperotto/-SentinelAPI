@@ -7,13 +7,13 @@ Sistema de monitoramento de saúde de APIs com notificações automáticas em te
 
 ## Sobre o Projeto
 
-Desenvolvi o SentinelAPI para resolver um problema que sempre enfrentei: saber quando algum serviço externo cai antes que os usuários reclamem. O sistema monitora múltiplas APIs simultaneamente e dispara alertas instantâneos via Telegram, Discord ou email quando detecta problemas.
+Criei o SentinelAPI porque sempre me frustrei em descobrir que uma API caiu somente depois dos usuários reportarem. A ideia é simples: monitorar múltiplas APIs ao mesmo tempo e receber alertas imediatos no Telegram, Discord ou por email quando algo der errado.
 
-O diferencial aqui está na arquitetura assíncrona que permite checar dezenas de endpoints ao mesmo tempo sem travar, usando asyncio do Python. Além disso, apliquei design patterns como Strategy para os notificadores, o que facilita adicionar novos canais de alerta sem mexer no código existente.
+A arquitetura usa asyncio para checar dezenas de endpoints simultaneamente sem travar. Apliquei o padrão Strategy nos notificadores, então adicionar novos canais de alerta é só criar uma nova classe sem mexer no resto.
 
 ## Por Que Esse Projeto?
 
-Trabalhei anteriormente com integrações mobile no Banco do Brasil e sempre tive a preocupação com a disponibilidade dos serviços. Esse projeto demonstra minha capacidade de:
+Durante meu trabalho com integrações mobile no Banco do Brasil, sempre me preocupei com disponibilidade dos serviços. Este projeto mostra que eu sei:
 
 - Trabalhar com programação assíncrona de forma eficiente
 - Estruturar código seguindo princípios SOLID
@@ -31,115 +31,86 @@ Trabalhei anteriormente com integrações mobile no Banco do Brasil e sempre tiv
 - 🔄 **Retry Inteligente**: Sistema de retentativas com backoff exponencial
 - 📝 **Logs Estruturados**: Registros detalhados em arquivo e console
 
-## Tecnologias Utilizadas
+## Stack Técnica
 
-### Core
-- **Python 3.11**: Linguagem principal com suporte às últimas features
-- **asyncio**: Para operações assíncronas nativas
-- **httpx**: Cliente HTTP assíncrono moderno (sucessor do requests)
-
-### Validação e Configuração
-- **Pydantic v2**: Validação de dados com type hints
-- **pydantic-settings**: Gerenciamento de variáveis de ambiente de forma tipada
-
-### Interface e Visualização
-- **Rich**: Output colorido e tabelas formatadas no terminal
-
-### Testes e Qualidade
-- **Pytest**: Framework de testes com suporte assíncrono
-- **pytest-cov**: Cobertura de código
-- **mypy**: Type checking estático
-- **ruff**: Linter moderno e rápido
-
-### DevOps
-- **Docker**: Containerização
-- **GitHub Actions**: CI/CD automatizado
+- **Python 3.11** - Escolhi a versão mais recente pela performance e features
+- **asyncio + httpx** - Requisições HTTP assíncronas sem bloqueio
+- **Pydantic v2** - Validação de dados e configurações tipadas
+- **Rich** - Interface colorida no terminal
+- **Pytest** - Testes automatizados com suporte async
+- **Docker** - Containerização para deploy
+- **GitHub Actions** - Pipeline de CI/CD
 
 ## Estrutura do Projeto
 
 ```
 sentinel_api/
 ├── app/
-│   ├── core/                 # Configurações centrais
-│   │   ├── config.py        # Settings com pydantic-settings
-│   │   ├── logger.py        # Sistema de logs estruturado
-│   │   └── models.py        # Modelos de dados
-│   ├── monitor/              # Lógica de monitoramento
-│   │   └── health_checker.py # Verificações assíncronas
-│   ├── notifier/             # Sistema de alertas
-│   │   ├── base.py          # Interface abstrata (ABC)
-│   │   ├── telegram.py      # Notificador Telegram
-│   │   ├── discord.py       # Notificador Discord
-│   │   └── email.py         # Notificador Email
-│   └── main.py              # Entrypoint da aplicação
-├── tests/                    # Testes automatizados
-├── .github/workflows/        # CI/CD
+│   ├── core/
+│   │   ├── config.py
+│   │   ├── logger.py
+│   │   └── models.py
+│   ├── monitor/
+│   │   └── health_checker.py
+│   ├── notifier/
+│   │   ├── base.py
+│   │   ├── telegram.py
+│   │   ├── discord.py
+│   │   └── email.py
+│   └── main.py
+├── tests/
+├── .github/workflows/
 ├── Dockerfile
 ├── docker-compose.yml
-├── pyproject.toml           # Gerenciamento com Poetry
-└── endpoints.json           # Configuração de endpoints
+├── pyproject.toml
+└── endpoints.json
 ```
 
 ## Como Funciona
 
-### 1. Arquitetura do Monitoramento
+### Arquitetura do Monitoramento
 
-O HealthChecker usa context managers assíncronos para gerenciar conexões HTTP eficientemente. Cada endpoint é verificado em paralelo usando `asyncio.gather()`, o que reduz drasticamente o tempo total de monitoramento.
+O HealthChecker usa context managers assíncronos e verifica todos os endpoints em paralelo com `asyncio.gather()`. Isso reduz muito o tempo total quando você monitora vários serviços.
 
 ```python
 async with HealthChecker(max_retries=3) as checker:
     results = await checker.check_multiple(endpoints)
 ```
 
-### 2. Sistema de Notificadores
+### Sistema de Notificadores
 
-Implementei o padrão Strategy através de uma classe base abstrata. Cada notificador implementa a mesma interface, permitindo adicionar novos canais sem modificar o código principal:
+Usei o padrão Strategy com uma classe base abstrata. Cada notificador implementa a mesma interface:
 
-- **TelegramNotifier**: Usa a Bot API do Telegram com formatação Markdown
-- **DiscordNotifier**: Webhooks com embeds personalizados
-- **EmailNotifier**: SMTP com HTML formatado
+- **TelegramNotifier** - Bot API com formatação Markdown
+- **DiscordNotifier** - Webhooks com embeds customizados
+- **EmailNotifier** - SMTP com templates HTML
 
-### 3. Validação com Pydantic
+### Validação de Dados
 
-Todos os dados são validados na entrada. Por exemplo, o EndpointConfig garante que URLs sejam válidas e que métodos HTTP estejam corretos antes mesmo do monitoramento começar.
+O Pydantic valida tudo na entrada. URLs inválidas ou métodos HTTP errados são rejeitados antes de iniciar o monitoramento.
 
-### 4. Tratamento de Erros
+### Estados de Saúde
 
-O sistema classifica problemas em três níveis:
-- **HEALTHY**: Endpoint respondendo conforme esperado
-- **DEGRADED**: Responde mas com status code inesperado
-- **DOWN**: Timeout ou erro de conexão
+Três níveis de status:
+- **HEALTHY** - Tudo certo
+- **DEGRADED** - Responde mas com status code errado
+- **DOWN** - Timeout ou erro de conexão
 
 ## Instalação e Uso
 
 ### Opção 1: Com Poetry (Recomendado)
 
 ```bash
-# Instalar dependências
 poetry install
-
-# Copiar arquivo de exemplo
 cp .env.example .env
-
-# Editar .env com suas credenciais
-# Configure pelo menos um notificador
-
-# Editar endpoints.json com as URLs que deseja monitorar
-
-# Rodar
 poetry run python -m app.main
 ```
 
 ### Opção 2: Com Docker
 
 ```bash
-# Configurar .env
 cp .env.example .env
-
-# Subir container
 docker-compose up -d
-
-# Ver logs
 docker-compose logs -f
 ```
 
@@ -148,18 +119,15 @@ docker-compose logs -f
 ### Variáveis de Ambiente (.env)
 
 ```env
-MONITOR_INTERVAL=60          # Intervalo entre verificações (segundos)
-REQUEST_TIMEOUT=10           # Timeout por requisição
-MAX_RETRIES=3               # Tentativas antes de considerar DOWN
+MONITOR_INTERVAL=60
+REQUEST_TIMEOUT=10
+MAX_RETRIES=3
 
-# Telegram (obtenha com @BotFather)
 TELEGRAM_BOT_TOKEN=seu_token
 TELEGRAM_CHAT_ID=seu_chat_id
 
-# Discord (crie um webhook no servidor)
 DISCORD_WEBHOOK_URL=sua_url
 
-# Email
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=seu_email@gmail.com
@@ -184,43 +152,30 @@ ALERT_EMAIL=destino@example.com
 ## Rodando os Testes
 
 ```bash
-# Todos os testes
 poetry run pytest
-
-# Com cobertura
-poetry run pytest --cov=app --cov-report=term-missing
-
-# Type checking
+poetry run pytest --cov=app
 poetry run mypy app/
 ```
 
-## Aprendizados e Decisões Técnicas
+## Decisões Técnicas
 
-### Por que asyncio em vez de threading?
+**asyncio vs threading**: asyncio é muito mais eficiente para operações de I/O como requisições HTTP. Threads trariam overhead desnecessário e seriam mais difíceis de debugar.
 
-O asyncio é mais eficiente para I/O-bound operations como requisições HTTP. Usar threads seria overhead desnecessário e mais difícil de debugar.
+**Pydantic v2**: A versão 2 tem ganhos reais de performance e a API ficou mais limpa. O pydantic-settings facilita muito o gerenciamento de variáveis de ambiente.
 
-### Por que Pydantic v2?
+**httpx**: É basicamente o sucessor do requests mas com async/await nativo. API familiar, código moderno.
 
-A versão 2 traz melhorias significativas de performance e uma API mais clara para validação. O pydantic-settings integra perfeitamente com variáveis de ambiente.
+**Abstract Base Classes**: Facilita criar mocks nos testes e adicionar novos notificadores sem quebrar nada. Princípios SOLID na prática.
 
-### Por que httpx?
+## Próximos Passos
 
-O httpx é o sucessor natural do requests, com suporte nativo a async/await. Mantém uma API familiar mas moderna.
+Se eu continuar desenvolvendo:
 
-### Por que Abstract Base Classes?
-
-Facilita testar (posso criar mocks) e adicionar novos notificadores sem quebrar código existente. Isso demonstra conhecimento de SOLID principles.
-
-## Próximas Melhorias
-
-Se fosse expandir o projeto, adicionaria:
-
-- [ ] Persistência de histórico em banco de dados
-- [ ] Dashboard web com gráficos de uptime
+- [ ] Salvar histórico em PostgreSQL ou SQLite
+- [ ] Dashboard web para visualizar uptime
 - [ ] Suporte a autenticação nas requisições
 - [ ] Webhooks customizáveis
-- [ ] Métricas de performance (P50, P95, P99)
+- [ ] Métricas de latência P50, P95, P99
 
 ## Licença
 
@@ -228,4 +183,4 @@ MIT
 
 ---
 
-Desenvolvido para demonstrar conhecimento profissional em Python e engenharia de software.
+
