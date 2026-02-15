@@ -1,10 +1,12 @@
 import asyncio
 import json
 from pathlib import Path
+from time import time
 
 from rich.console import Console
 from rich.table import Table
 
+from app.core.alerts import AlertConfig, EndpointAlertState
 from app.core.config import settings
 from app.core.logger import setup_logger
 from app.core.models import EndpointConfig, HealthCheckResult
@@ -65,6 +67,10 @@ def display_results(results: list[HealthCheckResult]) -> None:
     console.print(table)
 
 
+alert_states = {}
+alert_config = AlertConfig()
+
+
 async def send_alerts(results: list[HealthCheckResult]) -> None:
     notifiers = [
         TelegramNotifier(),
@@ -78,14 +84,23 @@ async def send_alerts(results: list[HealthCheckResult]) -> None:
         logger.info("Nenhum notificador configurado")
         return
     
+    current_time = time()
+    
     for result in results:
+        if result.endpoint not in alert_states:
+            alert_states[result.endpoint] = EndpointAlertState()
+        
+        state = alert_states[result.endpoint]
+        
         if not result.is_healthy:
-            tasks = [
-                notifier.send_alert(result) 
-                for notifier in active_notifiers 
-                if notifier.should_alert(result)
-            ]
-            await asyncio.gather(*tasks)
+            state.record_failure()
+            if state.should_alert(alert_config, current_time):
+                tasks = [notifier.send_alert(result) for notifier in active_notifiers]
+                await asyncio.gather(*tasks)
+        else:
+            if state.should_notify_recovery(alert_config):
+                logger.info(f"{result.endpoint} recuperado!")
+            state.record_success()
 
 
 async def monitor_loop(endpoints: list[EndpointConfig]) -> None:
