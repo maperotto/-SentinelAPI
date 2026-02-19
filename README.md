@@ -8,7 +8,6 @@ Sistema de monitoramento de saúde de APIs com notificações automáticas em te
 ## Sobre o Projeto
 
 Criei o SentinelAPI porque sempre me frustrei em descobrir que uma API caiu somente depois dos usuários reportarem. A ideia é simples: monitorar múltiplas APIs ao mesmo tempo e receber alertas imediatos no Telegram, Discord ou por email quando algo der errado.
-
 A arquitetura usa asyncio para checar dezenas de endpoints simultaneamente sem travar. Apliquei o padrão Strategy nos notificadores, então adicionar novos canais de alerta é só criar uma nova classe sem mexer no resto.
 
 ## Por Que Esse Projeto?
