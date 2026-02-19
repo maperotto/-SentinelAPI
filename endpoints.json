@@ -19,5 +19,26 @@
         "method": "GET",
         "expected_status": 200,
         "timeout": 10
+    },
+    {
+        "name": "HTTPBin",
+        "url": "https://httpbin.org/get",
+        "method": "GET",
+        "expected_status": 200,
+        "timeout": 10
+    },
+    {
+        "name": "Public API Test",
+        "url": "https://api.publicapis.org/entries",
+        "method": "GET",
+        "expected_status": 200,
+        "timeout": 10
+    },
+    {
+        "name": "Endpoint Offline (Demo)",
+        "url": "https://api-nao-existe-demo-12345.com/health",
+        "method": "GET",
+        "expected_status": 200,
+        "timeout": 5
     }
 ]
